@@ -6,7 +6,7 @@ import {
   Clock, Check, Sparkles, AlertOctagon, Share2, Layers, Cpu, Server,
   Search, ChevronRight, ChevronLeft, Pause, Play, ExternalLink,
   GraduationCap, Landmark, BarChart3, Smartphone, HelpCircle, FileCheck,
-  Command, LogIn, ArrowLeft, Home, Info, BookOpen, Video, Calendar,
+  LogIn, ArrowLeft, Home, Info, BookOpen, Video, Calendar,
   Users, CheckSquare, Sparkle, PhoneCall, Compass
 } from 'lucide-react';
 import { translations } from './i18n';
@@ -37,7 +37,6 @@ export default function App() {
   // Modals state
   const [showJsonLdModal, setShowJsonLdModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [showVcModal, setShowVcModal] = useState(false);
   const [loginRole, setLoginRole] = useState('STUDENT'); // 'STUDENT' | 'INSTITUTION' | 'SSO'
@@ -181,25 +180,16 @@ export default function App() {
     }
   };
 
-  // References for robust, glitch-free transitions and hotkeys
+  // References for robust, glitch-free transitions
   const isNavigatingRef = useRef(false);
   const activePageRef = useRef('home');
   const searchInputRef = useRef(null);
   const transitionTimerRef = useRef(null);
   const transitionEndTimerRef = useRef(null);
-  const [hudActiveKey, setHudActiveKey] = useState(null);
 
   useEffect(() => {
     activePageRef.current = activePage;
   }, [activePage]);
-
-  // Visual pulse on HUD when key is pressed
-  const pulseKey = (keyChar) => {
-    setHudActiveKey(keyChar);
-    setTimeout(() => {
-      setHudActiveKey(null);
-    }, 280);
-  };
 
   // Trigger fast, silky-smooth transition between pages
   const triggerPageTransition = (newPage) => {
@@ -252,9 +242,7 @@ export default function App() {
     triggerPageTransition(page);
   };
 
-  // =========================================================================
-  // KEYBOARD SHORTCUTS ENGINE ("All keys working properly & smoothly")
-  // =========================================================================
+  // Accessibility: Standard Escape key to dismiss active modals
   useEffect(() => {
     const handleKeyDown = (e) => {
       const target = e.target;
@@ -264,118 +252,23 @@ export default function App() {
         target.getAttribute('role') === 'textbox'
       );
 
-      // 1. ESCAPE KEY (Universal Dismiss, Blur & Back to Home)
       if (e.key === 'Escape' || e.code === 'Escape') {
-        if (showJsonLdModal || showLoginModal || showShortcutsModal || showQrModal) {
+        if (showJsonLdModal || showLoginModal || showQrModal || showVcModal) {
           setShowJsonLdModal(false);
           setShowLoginModal(false);
-          setShowShortcutsModal(false);
           setShowQrModal(false);
+          setShowVcModal(false);
           return;
         }
         if (isInput) {
           target.blur();
-          return;
-        }
-        if (activePageRef.current !== 'home') {
-          pulseKey('0');
-          navigateTo('home');
-          return;
-        }
-      }
-
-      // 2. QUESTION MARK '?' (Cheatsheet Modal)
-      if (e.key === '?' || (e.shiftKey && (e.key === '/' || e.code === 'Slash'))) {
-        if (!isInput) {
-          e.preventDefault();
-          setShowShortcutsModal((prev) => !prev);
-        }
-        return;
-      }
-
-      // 3. SEARCH QUICK FOCUS '/'
-      if ((e.key === '/' || e.code === 'Slash') && !isInput && !e.shiftKey) {
-        e.preventDefault();
-        if (activePageRef.current !== 'home' && activePageRef.current !== 'verifier') {
-          navigateTo('home');
-        }
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-            searchInputRef.current.select();
-          }
-        }, 220);
-        return;
-      }
-
-      // 4. THEME TOGGLE KEY 't' / 'T'
-      if (!isInput && (e.key === 't' || e.key === 'T')) {
-        setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-        return;
-      }
-
-      // 5. NAVIGATION SHORTCUTS (Only when NOT typing in an input field)
-      if (!isInput) {
-        const key = e.key ? e.key.toLowerCase() : '';
-        const code = e.code || '';
-        const pages = ['home', 'verifier', 'student', 'institution', 'admin', 'about'];
-
-        if (e.key === '0' || code === 'Digit0' || code === 'Numpad0' || key === 'h') {
-          e.preventDefault();
-          pulseKey('0');
-          navigateTo('home');
-        } else if (e.key === '1' || code === 'Digit1' || code === 'Numpad1' || key === 'v') {
-          e.preventDefault();
-          pulseKey('1');
-          navigateTo('verifier');
-        } else if (e.key === '2' || code === 'Digit2' || code === 'Numpad2' || key === 's') {
-          e.preventDefault();
-          pulseKey('2');
-          navigateTo('student');
-        } else if (e.key === '3' || code === 'Digit3' || code === 'Numpad3' || key === 'i') {
-          e.preventDefault();
-          pulseKey('3');
-          navigateTo('institution');
-        } else if (e.key === '4' || code === 'Digit4' || code === 'Numpad4' || key === 'd') {
-          e.preventDefault();
-          pulseKey('4');
-          navigateTo('admin');
-        } else if (e.key === '5' || code === 'Digit5' || code === 'Numpad5' || key === 'a') {
-          e.preventDefault();
-          pulseKey('5');
-          navigateTo('about');
-        } else if (key === 'l' || key === 'm') {
-          e.preventDefault();
-          setLoginRole('SSO');
-          setShowLoginModal(true);
-        } else if (e.key === 'ArrowLeft' || code === 'ArrowLeft') {
-          if (activePageRef.current === 'home') {
-            setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
-          } else {
-            const curIdx = pages.indexOf(activePageRef.current);
-            const prevPage = pages[(curIdx - 1 + pages.length) % pages.length];
-            navigateTo(prevPage);
-          }
-        } else if (e.key === 'ArrowRight' || code === 'ArrowRight') {
-          if (activePageRef.current === 'home') {
-            setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-          } else {
-            const curIdx = pages.indexOf(activePageRef.current);
-            const nextPage = pages[(curIdx + 1) % pages.length];
-            navigateTo(nextPage);
-          }
-        } else if (e.key === ' ' || code === 'Space') {
-          if (activePageRef.current === 'home') {
-            e.preventDefault();
-            setCarouselPaused((prev) => !prev);
-          }
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [heroSlides.length, showJsonLdModal, showLoginModal, showShortcutsModal, showQrModal]);
+  }, [showJsonLdModal, showLoginModal, showQrModal, showVcModal]);
 
   // =========================================================================
   // 1. PUBLIC INSTANT VERIFIER ENGINE (< 200ms)
@@ -576,44 +469,38 @@ export default function App() {
       <button 
         className={`dl-subpage-tab ${activePage === 'home' ? 'active' : ''}`}
         onClick={() => navigateTo('home')}
-        title="Press 0 or H"
       >
-        <Home size={13} /> Home <span className="dl-tab-kbd">0</span>
+        <Home size={13} /> Home
       </button>
       <button 
         className={`dl-subpage-tab ${activePage === 'verifier' ? 'active' : ''}`}
         onClick={() => navigateTo('verifier')}
-        title="Press 1 or V"
       >
-        <Shield size={13} /> Instant Verifier <span className="dl-tab-kbd">1</span>
+        <Shield size={13} /> Instant Verifier
       </button>
       <button 
         className={`dl-subpage-tab ${activePage === 'student' ? 'active' : ''}`}
         onClick={() => navigateTo('student')}
-        title="Press 2 or S"
       >
-        <User size={13} /> Student Portal <span className="dl-tab-kbd">2</span>
+        <User size={13} /> Student Portal
       </button>
       <button 
         className={`dl-subpage-tab ${activePage === 'institution' ? 'active' : ''}`}
         onClick={() => navigateTo('institution')}
-        title="Press 3 or I"
       >
-        <Building2 size={13} /> Institution Desk <span className="dl-tab-kbd">3</span>
+        <Building2 size={13} /> Institution Desk
       </button>
       <button 
         className={`dl-subpage-tab ${activePage === 'admin' ? 'active' : ''}`}
         onClick={() => navigateTo('admin')}
-        title="Press 4 or D"
       >
-        <Scale size={13} /> AICTE Admin <span className="dl-tab-kbd">4</span>
+        <Scale size={13} /> AICTE Admin
       </button>
       <button 
         className={`dl-subpage-tab ${activePage === 'about' ? 'active' : ''}`}
         onClick={() => navigateTo('about')}
-        title="Press 5 or A"
       >
-        <Info size={13} /> About Us <span className="dl-tab-kbd">5</span>
+        <Info size={13} /> About Us
       </button>
     </div>
   );
@@ -726,62 +613,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Floating Keyboard Navigation HUD Pill (Ultra-Minimal & Aesthetic) */}
-      <div 
-        className="dl-floating-hotkey-bar"
-        title="Active Hotkeys Engine • Press '?' for full modal"
-      >
-        <span className="dl-hud-icon">⌨️</span>
-        <div 
-          className={`dl-hud-item ${activePage === 'home' ? 'current' : ''} ${hudActiveKey === '0' ? 'active-pulse' : ''}`} 
-          onClick={() => navigateTo('home')} 
-          title="Press 0 or H"
-        >
-          <span>Home</span> <span className="dl-hud-kbd">0</span>
-        </div>
-        <div 
-          className={`dl-hud-item ${activePage === 'verifier' ? 'current' : ''} ${hudActiveKey === '1' ? 'active-pulse' : ''}`} 
-          onClick={() => navigateTo('verifier')} 
-          title="Press 1 or V"
-        >
-          <span>Verifier</span> <span className="dl-hud-kbd">1</span>
-        </div>
-        <div 
-          className={`dl-hud-item ${activePage === 'student' ? 'current' : ''} ${hudActiveKey === '2' ? 'active-pulse' : ''}`} 
-          onClick={() => navigateTo('student')} 
-          title="Press 2 or S"
-        >
-          <span>Student</span> <span className="dl-hud-kbd">2</span>
-        </div>
-        <div 
-          className={`dl-hud-item ${activePage === 'institution' ? 'current' : ''} ${hudActiveKey === '3' ? 'active-pulse' : ''}`} 
-          onClick={() => navigateTo('institution')} 
-          title="Press 3 or I"
-        >
-          <span>Institute</span> <span className="dl-hud-kbd">3</span>
-        </div>
-        <div 
-          className={`dl-hud-item ${activePage === 'admin' ? 'current' : ''} ${hudActiveKey === '4' ? 'active-pulse' : ''}`} 
-          onClick={() => navigateTo('admin')} 
-          title="Press 4 or D"
-        >
-          <span>Admin</span> <span className="dl-hud-kbd">4</span>
-        </div>
-        <div 
-          className={`dl-hud-item ${activePage === 'about' ? 'current' : ''} ${hudActiveKey === '5' ? 'active-pulse' : ''}`} 
-          onClick={() => navigateTo('about')} 
-          title="Press 5 or A"
-        >
-          <span>About</span> <span className="dl-hud-kbd">5</span>
-        </div>
-        <div 
-          className="dl-hud-item dl-hud-help" 
-          onClick={() => setShowShortcutsModal(true)}
-          title="Press '?' for full shortcuts cheatsheet"
-        >
-          <span>Keys</span> <span className="dl-hud-kbd">?</span>
-        </div>
-      </div>
+
 
       {/* Toast Notification Container */}
       {toastMessage && (
@@ -910,7 +742,7 @@ export default function App() {
          ===================================================================== */}
       <header className="dl-main-navbar">
         <div className="dl-logo-lockup" onClick={() => navigateTo('home')}>
-          <div className="dl-brand-emblem" title="Return to Home (Key 0 or H)">
+          <div className="dl-brand-emblem" title="Return to Home">
             <svg width="34" height="34" viewBox="0 0 40 40" fill="none">
               <rect width="40" height="40" rx="8" fill="#0052cc" />
               <path d="M20 7L31 13V20C31 27.5 26.3 32.5 20 34C13.7 32.5 9 27.5 9 20V13L20 7Z" stroke="#ffffff" strokeWidth="2.5" strokeLinejoin="round" />
@@ -936,75 +768,61 @@ export default function App() {
           <span 
             className={`dl-nav-item ${activePage === 'home' ? 'active' : ''}`}
             onClick={() => navigateTo('home')}
-            title="Press '0' or 'H' on keyboard"
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateTo('home'); }}
           >
-            <Home size={15} /> Home <span className="dl-nav-kbd">0</span>
+            <Home size={15} /> Home
           </span>
           <span 
             className={`dl-nav-item ${activePage === 'verifier' ? 'active' : ''}`}
             onClick={() => navigateTo('verifier')}
-            title="Press '1' or 'V' on keyboard"
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateTo('verifier'); }}
           >
-            <CheckCircle2 size={15} /> Instant Verifier <span className="dl-nav-kbd">1</span>
+            <CheckCircle2 size={15} /> Instant Verifier
           </span>
           <span 
             className={`dl-nav-item ${activePage === 'student' ? 'active' : ''}`}
             onClick={() => navigateTo('student')}
-            title="Press '2' or 'S' on keyboard"
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateTo('student'); }}
           >
-            <User size={15} /> Student Portal <span className="dl-nav-kbd">2</span>
+            <User size={15} /> Student Portal
           </span>
           <span 
             className={`dl-nav-item ${activePage === 'institution' ? 'active' : ''}`}
             onClick={() => navigateTo('institution')}
-            title="Press '3' or 'I' on keyboard"
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateTo('institution'); }}
           >
-            <Building2 size={15} /> Awarding Institutions <span className="dl-nav-kbd">3</span>
+            <Building2 size={15} /> Awarding Institutions
           </span>
           <span 
             className={`dl-nav-item ${activePage === 'admin' ? 'active' : ''}`}
             onClick={() => navigateTo('admin')}
-            title="Press '4' or 'D' on keyboard"
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateTo('admin'); }}
           >
-            <Scale size={15} /> AICTE Admin <span className="dl-nav-kbd">4</span>
+            <Scale size={15} /> AICTE Admin
           </span>
           <span 
             className={`dl-nav-item ${activePage === 'about' ? 'active' : ''}`}
             onClick={() => navigateTo('about')}
-            title="Press '5' or 'A' on keyboard"
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateTo('about'); }}
           >
-            <Info size={15} /> About Us <span className="dl-nav-kbd">5</span>
+            <Info size={15} /> About Us
           </span>
         </nav>
 
         {/* Header Action Buttons (Matching ABC login pathways) */}
         <div className="dl-header-actions">
-          <button 
-            className="btn-dl-outline"
-            onClick={() => setShowShortcutsModal(true)}
-            title="Press '?' on keyboard for hotkey guide"
-            style={{ padding: '7px 11px', fontSize: '0.8rem' }}
-          >
-            <Command size={14} /> Hotkeys <span className="dl-nav-kbd" style={{ marginLeft: '4px' }}>?</span>
-          </button>
 
           <button 
             className="btn-dl-outline"
@@ -1656,7 +1474,7 @@ export default function App() {
                 onClick={() => navigateTo('institution')}
                 style={{ padding: '10px 24px' }}
               >
-                <Building2 size={16} /> Open Institutional Ingestion Portal (Key 3 / I) <ArrowRight size={14} />
+                <Building2 size={16} /> Open Institutional Ingestion Portal <ArrowRight size={14} />
               </button>
             </div>
           </section>
@@ -1702,7 +1520,7 @@ export default function App() {
               <span className="dl-section-tag">AICTE Core Architecture</span>
               <h3 className="dl-section-title">AICTE APAAR Sovereign Portals & Dedicated Modules</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '780px', marginTop: '6px' }}>
-                Dedicated standalone portals engineered for students, verifying employers, institutional registrars, and national regulatory watchdogs. Select any portal below or use direct keyboard hotkeys.
+                Dedicated standalone portals engineered for students, verifying employers, institutional registrars, and national regulatory watchdogs. Select any portal below to access dedicated services.
               </p>
             </div>
 
@@ -1721,7 +1539,7 @@ export default function App() {
                       <Shield size={24} />
                     </div>
                     <span className="dl-portal-badge" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                      Portal 1 • Key 1 / V
+                      Portal 1 • Public Verifier
                     </span>
                   </div>
                   <h4 className="dl-portal-title">Public Instant Verifier</h4>
@@ -1751,7 +1569,7 @@ export default function App() {
                       <User size={24} />
                     </div>
                     <span className="dl-portal-badge" style={{ background: '#ecfdf5', color: '#047857' }}>
-                      Portal 2 • Key 2 / S
+                      Portal 2 • Student Desk
                     </span>
                   </div>
                   <h4 className="dl-portal-title">Student Portal & APAAR Smart Card</h4>
@@ -1781,7 +1599,7 @@ export default function App() {
                       <Building2 size={24} />
                     </div>
                     <span className="dl-portal-badge" style={{ background: '#fffbeb', color: '#b45309' }}>
-                      Portal 3 • Key 3 / I
+                      Portal 3 • Nodal Desk
                     </span>
                   </div>
                   <h4 className="dl-portal-title">Institution Nodal Officer Desk</h4>
@@ -1811,7 +1629,7 @@ export default function App() {
                       <Scale size={24} />
                     </div>
                     <span className="dl-portal-badge" style={{ background: '#f5f3ff', color: '#6d28d9' }}>
-                      Portal 4 • Key 4 / D
+                      Portal 4 • Directorate Sentinel
                     </span>
                   </div>
                   <h4 className="dl-portal-title">AICTE Directorate Sentinel</h4>
@@ -1841,7 +1659,7 @@ export default function App() {
                       <Info size={24} />
                     </div>
                     <span className="dl-portal-badge" style={{ background: '#ecfeff', color: '#0e7490' }}>
-                      Portal 5 • Key 5 / A
+                      Portal 5 • Statutory Framework
                     </span>
                   </div>
                   <h4 className="dl-portal-title">About Us & Statutory Compliance</h4>
@@ -3105,71 +2923,7 @@ export default function App() {
         </div>
       )}
 
-      {/* =====================================================================
-          MODAL: KEYBOARD SHORTCUTS HELP MODAL
-         ===================================================================== */}
-      {showShortcutsModal && (
-        <div className="dl-modal-overlay">
-          <div className="dl-modal-box">
-            <div className="dl-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Command size={18} color="var(--dl-blue)" />
-                <h4 style={{ fontWeight: 800 }}>Keyboard Navigation & Hotkeys</h4>
-              </div>
-              <button 
-                onClick={() => setShowShortcutsModal(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: 'var(--text-tertiary)' }}
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="dl-modal-body">
-              <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                Navigate between separate pages and actions instantly using your keyboard:
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--dl-blue)', marginTop: '4px' }}>
-                  Portal Navigation (Digits & Numpad)
-                </div>
-                {[
-                  { key: '0 / H', desc: 'Main Landing Home Page' },
-                  { key: '1 / V', desc: 'Public Instant Verifier Console (< 200ms)' },
-                  { key: '2 / S', desc: 'Student Portal & APAAR Smart Card' },
-                  { key: '3 / I', desc: 'Institution Nodal Officer Desk' },
-                  { key: '4 / D', desc: 'AICTE Directorate Sentinel & Logs' },
-                  { key: '5 / A', desc: 'About Us & Statutory Compliance' },
-                ].map((s, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--bg-subtle)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-                    <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>{s.desc}</span>
-                    <span className="dl-kbd-tag" style={{ padding: '2px 7px', fontWeight: 800 }}>{s.key}</span>
-                  </div>
-                ))}
-
-                <div style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--dl-blue)', marginTop: '8px' }}>
-                  Quick Actions & Controls
-                </div>
-                {[
-                  { key: '/', desc: 'Quick-Focus Search Bar on Home / Verifier' },
-                  { key: 'T', desc: 'Toggle Dark / Light Theme' },
-                  { key: 'L / M', desc: 'Open MeriPehchaan SSO Login' },
-                  { key: 'Enter', desc: 'Execute Verification / Submit Form' },
-                  { key: '← / →', desc: 'Cycle through Portals or Carousel' },
-                  { key: 'Space', desc: 'Pause / Resume Carousel Autoplay' },
-                  { key: 'Esc', desc: 'Dismiss Active Modal / Blur / Return Home' },
-                  { key: '?', desc: 'Toggle this Shortcuts Guide' }
-                ].map((s, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--bg-subtle)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-                    <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>{s.desc}</span>
-                    <span className="dl-kbd-tag" style={{ padding: '2px 7px', fontWeight: 800 }}>{s.key}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* =====================================================================
           MODAL: QR CODE ZOOM MODAL
@@ -3388,12 +3142,12 @@ export default function App() {
           <div className="dl-footer-col">
             <h4>PAGES</h4>
             <ul className="dl-footer-links">
-              <li><span onClick={() => navigateTo('home')} className="dl-footer-link" style={{ cursor: 'pointer' }}>Home (Key 0)</span></li>
-              <li><span onClick={() => navigateTo('verifier')} className="dl-footer-link" style={{ cursor: 'pointer' }}>Instant Verifier (Key 1)</span></li>
-              <li><span onClick={() => navigateTo('student')} className="dl-footer-link" style={{ cursor: 'pointer' }}>Student Portal (Key 2)</span></li>
-              <li><span onClick={() => navigateTo('institution')} className="dl-footer-link" style={{ cursor: 'pointer' }}>Awarding Institutions (Key 3)</span></li>
-              <li><span onClick={() => navigateTo('admin')} className="dl-footer-link" style={{ cursor: 'pointer' }}>AICTE Admin Sentinel (Key 4)</span></li>
-              <li><span onClick={() => navigateTo('about')} className="dl-footer-link" style={{ cursor: 'pointer' }}>About Us (Key 5)</span></li>
+              <li><span onClick={() => navigateTo('home')} className="dl-footer-link" style={{ cursor: 'pointer' }}>Home</span></li>
+              <li><span onClick={() => navigateTo('verifier')} className="dl-footer-link" style={{ cursor: 'pointer' }}>Instant Verifier</span></li>
+              <li><span onClick={() => navigateTo('student')} className="dl-footer-link" style={{ cursor: 'pointer' }}>Student Portal</span></li>
+              <li><span onClick={() => navigateTo('institution')} className="dl-footer-link" style={{ cursor: 'pointer' }}>Awarding Institutions</span></li>
+              <li><span onClick={() => navigateTo('admin')} className="dl-footer-link" style={{ cursor: 'pointer' }}>AICTE Admin Sentinel</span></li>
+              <li><span onClick={() => navigateTo('about')} className="dl-footer-link" style={{ cursor: 'pointer' }}>About Us</span></li>
             </ul>
           </div>
 
