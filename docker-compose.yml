@@ -1,0 +1,160 @@
+version: '3.8'
+
+services:
+  # =========================================================================
+  # 1. API GATEWAY (NGINX - CERT-In & GIGW Compliant Reverse Proxy)
+  # =========================================================================
+  api-gateway:
+    image: nginx:1.25-alpine
+    container_name: aicte-apaar-gateway
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    networks:
+      - public-net
+      - backend-net
+    depends_on:
+      backend-core:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+
+  # =========================================================================
+  # 2. BACKEND CORE MICROSERVICE (AICTE APAAR Engine & DEPA Verification)
+  # =========================================================================
+  backend-core:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aicte-apaar-backend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_URL=postgresql://aicte_admin:SecureAictePass2026!@postgres:5432/aicte_apaar_db?sslmode=disable
+      - ADV_DATABASE_URL=postgresql://adv_vault_user:AdvHsmSecurePass2026!@postgres:5432/aicte_apaar_db?sslmode=disable
+      - REDIS_URL=redis://:RedisGovSecure2026!@redis:6379/0
+      - KMS_MASTER_KEY_HEX=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - KMS_HMAC_PEPPER_HEX=fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+      - JWT_SECRET=AICTE_NATIONAL_SECURE_JWT_SECRET_GOV_INDIA_2026_CERT_IN
+      - JWT_EXPIRY=15m
+      - GOV_SANDBOX_URL=http://mock-gov-api:5050
+      - AICTE_PLATFORM_KEY_ID=AICTE-ROOT-HSM-KEY-01
+    networks:
+      - backend-net
+      - vault-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mock-gov-api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # =========================================================================
+  # 3. MOCK GOV-API SANDBOX (API Setu, DigiLocker, MeriPehchaan, UIDAI OTP)
+  # =========================================================================
+  mock-gov-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.mock
+    container_name: aicte-gov-sandbox
+    restart: always
+    environment:
+      - PORT=5050
+      - NODE_ENV=development
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5050/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # =========================================================================
+  # 4. FRONTEND APPLICATION (GIGW 3.0 & DBIM Compliant Next.js / React)
+  # =========================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: aicte-apaar-frontend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=/api/v1
+      - VITE_GOV_SANDBOX_URL=/gov-sandbox
+    networks:
+      - backend-net
+      - public-net
+
+  # =========================================================================
+  # 5. POSTGRESQL 16 (Multi-Schema: aicte_core & Isolated aadhaar_vault_schema)
+  # =========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: aicte-apaar-postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=aicte_apaar_db
+      - POSTGRES_USER=aicte_admin
+      - POSTGRES_PASSWORD=SecureAictePass2026!
+      - ADV_USER=adv_vault_user
+      - ADV_PASSWORD=AdvHsmSecurePass2026!
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
+      - ./database/seeds:/docker-entrypoint-initdb.d/seeds:ro
+      - ./database/init-db.sh:/docker-entrypoint-initdb.d/000_init-db.sh:ro
+    networks:
+      - backend-net
+      - vault-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aicte_admin -d aicte_apaar_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =========================================================================
+  # 6. REDIS 7 (Cache, Session Store, Ephemeral OTPs, Rate Limiting)
+  # =========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: aicte-apaar-redis
+    restart: always
+    command: ["redis-server", "--requirepass", "RedisGovSecure2026!", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "RedisGovSecure2026!", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# =========================================================================
+# NETWORK ISOLATION (Defense-in-depth architecture)
+# =========================================================================
+networks:
+  public-net:
+    driver: bridge
+  backend-net:
+    driver: bridge
+  vault-net:
+    driver: bridge
+    internal: true # ADV vault is strictly isolated from outside network traffic
+
+volumes:
+  postgres-data:
+  redis-data:

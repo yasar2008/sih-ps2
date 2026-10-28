@@ -1,0 +1,14 @@
+# Dockerfile for Mock National Gov-API Sandbox (API Setu / DigiLocker / MeriPehchaan)
+FROM node:20-alpine
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+COPY tsconfig.json ./
+COPY src ./src
+
+EXPOSE 5050
+USER node
+
+CMD ["npx", "ts-node", "src/mock-gov-api/gov-sandbox.server.ts"]

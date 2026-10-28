@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: aicte-postgres
+  namespace: aicte-apaar-system
+spec:
+  serviceName: postgres-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aicte-postgres
+  template:
+    metadata:
+      labels:
+        app: aicte-postgres
+        tier: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgresql
+          env:
+            - name: POSTGRES_DB
+              value: "aicte_apaar_db"
+            - name: POSTGRES_USER
+              value: "aicte_admin"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aicte-kms-vault-secrets
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: aicte-apaar-system
+spec:
+  ports:
+    - port: 5432
+      name: postgresql
+  selector:
+    app: aicte-postgres
+  clusterIP: None
