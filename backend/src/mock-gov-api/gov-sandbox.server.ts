@@ -286,7 +286,8 @@ app.post('/uidai/v1/vault/tokenize', (req: Request, res: Response) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`[GOV-SANDBOX] National Gov-API Mock Server running on port ${PORT}`);
+const HOST = '0.0.0.0';
+app.listen(Number(PORT), HOST, () => {
+  console.log(`[GOV-SANDBOX] National Gov-API Mock Server running on http://${HOST}:${PORT}`);
   console.log(`[GOV-SANDBOX] Endpoints active: API Setu, DigiLocker, ABC, MeriPehchaan SSO, UIDAI Vault`);
 });

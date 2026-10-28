@@ -202,6 +202,37 @@ export class AcademicRecordsService {
 
         DatabaseStore.academicRecords.set(recordId, newRecord);
 
+        // If Gov Sandbox is bound via GOV_SANDBOX_URL, sync records with DigiLocker and ABC
+        const govSandboxUrl = process.env.GOV_SANDBOX_URL;
+        if (govSandboxUrl) {
+          try {
+            await fetch(new URL('/digilocker/v1/push/uri', govSandboxUrl), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                uri: digilockerUri,
+                verifiableCredential: w3cCredential,
+                recordHash
+              })
+            });
+
+            await fetch(new URL('/abc/v1/credits/sync', govSandboxUrl), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                abcAccountId: student.abcAccountId,
+                apaarId: item.apaarId,
+                aisheCode: payload.aisheCode,
+                creditsEarned: item.creditsEarned,
+                semester: item.semester,
+                programName: item.programName
+              })
+            });
+          } catch (syncErr) {
+            console.warn('[ACADEMIC-RECORDS] Internal Gov Sandbox sync warning:', syncErr);
+          }
+        }
+
         // STAGE 4: Audit Logging
         AuditService.logSecurityEvent({
           actorId: payload.nodalOfficerId,

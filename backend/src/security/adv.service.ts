@@ -103,6 +103,20 @@ export class AadhaarDataVaultService {
     this.vaultStore.set(referenceToken, newEntry);
     this.recordAccess(referenceToken, accessorService, accessorIp, purpose, 'TOKENIZE');
 
+    // Notify Gov Sandbox UIDAI ADV simulator if bound
+    const govSandboxUrl = process.env.GOV_SANDBOX_URL;
+    if (govSandboxUrl) {
+      try {
+        fetch(new URL('/uidai/v1/vault/tokenize', govSandboxUrl), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ aadhaarNumber: rawAadhaar, apaarId })
+        }).catch(err => console.warn('[ADV-SERVICE] Internal Gov Sandbox tokenize warning:', err));
+      } catch (err) {
+        // Non-blocking
+      }
+    }
+
     return { referenceToken, aadhaarLastFour: lastFour };
   }
 

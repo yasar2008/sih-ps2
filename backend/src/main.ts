@@ -15,7 +15,7 @@ import institutionsRouter from './modules/institutions/institutions.controller';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || (process.env.NODE_ENV === 'production' ? 80 : 5000);
 
 // ============================================================================
 // 1. CERT-In & GIGW 3.0 Mandatory Security Hardening
@@ -40,7 +40,7 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
-        connectSrc: ["'self'", "http://localhost:*", "ws://localhost:*", "https://*.gov.in"],
+        connectSrc: ["'self'", "http://localhost:*", "ws://localhost:*", "https://*.gov.in", "https://*.vercel.app"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: []
       }
@@ -60,12 +60,18 @@ app.use(
   })
 );
 
-// CORS for local development and authorized portals
+// CORS for local development, Vercel deployments, and authorized portals
 app.use(
   cors({
     origin: (origin, callback) => {
-      // In development allow localhost origins; in production limit to .gov.in
-      if (!origin || /^http:\/\/localhost:[0-9]+$/.test(origin) || origin.endsWith('.gov.in')) {
+      // In development allow localhost origins; in production allow .gov.in and Vercel domains
+      if (
+        !origin ||
+        /^http:\/\/localhost:[0-9]+$/.test(origin) ||
+        origin.endsWith('.gov.in') ||
+        origin.endsWith('.vercel.app') ||
+        origin.includes('vercel.app')
+      ) {
         callback(null, true);
       } else {
         callback(new Error('CORS Access Denied: Unauthorized Domain.'));
@@ -140,8 +146,9 @@ app.use((_req: Request, res: Response) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`[AICTE-APAAR-CORE] National Service running on port ${PORT}`);
+const HOST = '0.0.0.0';
+app.listen(Number(PORT), HOST, () => {
+  console.log(`[AICTE-APAAR-CORE] National Service running on http://${HOST}:${PORT}`);
   console.log(`[AICTE-APAAR-CORE] Security Mode: CERT-In Hardened, GIGW 3.0, DPDP Act 2023 Enabled`);
 });
 

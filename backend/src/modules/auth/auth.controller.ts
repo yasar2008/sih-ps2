@@ -8,7 +8,7 @@ const router = Router();
  * POST /api/v1/auth/student/login-otp
  * Step 1: Request MeriPehchaan SSO OTP for APAAR ID
  */
-router.post('/student/request-otp', (req: Request, res: Response) => {
+router.post('/student/request-otp', async (req: Request, res: Response) => {
   const { apaarId } = req.body;
   const clientIp = extractClientIp(req);
 
@@ -19,7 +19,20 @@ router.post('/student/request-otp', (req: Request, res: Response) => {
     });
   }
 
-  // Trigger simulated national SMS dispatch
+  // Trigger simulated national SMS dispatch via bound Gov Sandbox if available
+  const govSandboxUrl = process.env.GOV_SANDBOX_URL;
+  if (govSandboxUrl) {
+    try {
+      await fetch(new URL('/meripehchaan/v1/otp/send', govSandboxUrl), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: apaarId, type: 'APAAR' })
+      });
+    } catch (err) {
+      console.warn('[AUTH-CONTROLLER] Internal Gov Sandbox OTP dispatch notification failed:', err);
+    }
+  }
+
   return res.json({
     success: true,
     message: `National SSO OTP successfully dispatched to mobile registered with APAAR ID ${apaarId}.`,

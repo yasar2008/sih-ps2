@@ -58,8 +58,29 @@ export class AuthService {
       throw new Error('APAAR ID not found in AICTE National Student Registry.');
     }
 
-    // Verify OTP (Test demo OTP is '123456')
-    if (otp !== '123456') {
+    // Verify OTP via bound Gov Sandbox if available, or fall back to demo OTP '123456'
+    let otpValid = otp === '123456';
+    const govSandboxUrl = process.env.GOV_SANDBOX_URL;
+    if (!otpValid && govSandboxUrl) {
+      try {
+        const verifyUrl = new URL('/meripehchaan/v1/otp/verify', govSandboxUrl);
+        const verifyRes = await fetch(verifyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: apaarId, otp })
+        });
+        if (verifyRes.ok) {
+          const verifyData: any = await verifyRes.json();
+          if (verifyData.success) {
+            otpValid = true;
+          }
+        }
+      } catch (err) {
+        console.warn('[AUTH-SERVICE] Internal Gov Sandbox verification error:', err);
+      }
+    }
+
+    if (!otpValid) {
       AuditService.logSecurityEvent({
         actorId: apaarId,
         actorRole: 'STUDENT',

@@ -22,6 +22,7 @@ COPY --from=builder /app/dist ./dist
 
 # Non-root user for CERT-In container security hardening
 USER node
+EXPOSE 80
 EXPOSE 5000
 
 CMD ["node", "dist/main.js"]
